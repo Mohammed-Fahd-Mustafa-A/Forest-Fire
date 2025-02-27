@@ -1,0 +1,47 @@
+from flask import Flask, jsonify, render_template
+import json
+import os
+
+app = Flask(__name__)
+
+BLOCKCHAIN_FILE = "C:\\Users\\HP\\blockchain_data.json"
+
+def load_blockchain():
+    """Load and fix incorrectly formatted blockchain data."""
+    try:
+        with open(BLOCKCHAIN_FILE, "r") as file:
+            data = file.read().strip()
+
+            # Handle empty file case
+            if not data:
+                return []
+
+            # Convert multiple JSON objects into a valid JSON array
+            formatted_data = "[" + data.replace("}\n{", "},\n{") + "]"
+            blockchain = json.loads(formatted_data)
+
+            # Return only the latest 4 records
+            return blockchain[-4:]
+
+    except json.JSONDecodeError:
+        print("[ERROR] JSON file is corrupted. Resetting to empty blockchain.")
+        return []
+    
+    except FileNotFoundError:
+        print("[ERROR] Blockchain file not found. Creating a new one.")
+        return []
+
+@app.route("/blockchain", methods=["GET"])
+def get_blockchain():
+    """Return only the latest 4 blockchain entries."""
+    blockchain = load_blockchain()
+    return jsonify(blockchain)
+
+@app.route("/")
+def index():
+    """Render the HTML template for the blockchain."""
+    blockchain = load_blockchain()
+    return render_template("chainboard.html", blockchain=blockchain)
+
+if __name__ == "__main__":
+    app.run(debug=True)
